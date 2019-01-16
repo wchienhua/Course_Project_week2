@@ -1,3 +1,8 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
 library(data.table)
 library(dplyr)
 library(tidyr)
