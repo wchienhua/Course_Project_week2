@@ -1,0 +1,134 @@
+---
+title: "Course_Project_Week2"
+author: "Chien-Hua Wang"
+date: "January 16, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+## Library Import
+library(data.table)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+
+## download zip file containing data if it hasn't already been downloaded
+```{r, echo=TRUE}
+zipUrl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+zipFile <- "Activity Monitoring Data.zip"
+if (!file.exists(zipFile)) {
+  download.file(zipUrl, zipFile, mode = "wb")
+}
+```
+
+## unzip zip file containing data if data directory doesn't already exist
+```{r, echo=TRUE}
+dataPath <- "Activity Monitoring Data"
+if (!file.exists(dataPath)) {
+  unzip(zipFile)
+}
+```
+
+## Import data 
+```{r, echo=TRUE}
+activitydf <- read.csv("activity.csv")
+# Format steps and date 
+activitydf$date = as.Date(activitydf$date)
+
+```
+
+### 1. Calculate the total number of steps taken per day
+```{r, echo=TRUE}
+Total_Steps = activitydf %>%
+  select(date, steps) %>%
+  group_by(date) %>%
+  summarize(steps = sum(steps))
+head(Total_Steps,10)
+```
+
+### 2. Histogram of the total number of steps taken each day
+```{r, echo=TRUE}
+ggplot(Total_Steps, aes(x = steps)) +
+  geom_histogram(fill = "blue", binwidth = 900) +
+  labs(title = "Daily Steps", x = "Steps", y = "Frequency")
+```
+
+### 3. Mean and median number of steps taken each day
+```{r, echo=TRUE}
+Total_Steps %>%
+  select(steps) %>%
+  summarise(Mean_Steps = mean(steps,na.rm=T),
+            Media_Steps = median(steps, na.rm=T))
+```
+
+### 4. Time series plot of the average number of steps taken
+```{r, echo=TRUE}
+Intervaldf = activitydf %>%
+  select(steps, interval) %>%
+  group_by(interval) %>%
+  summarise(steps = mean(steps, na.rm=T))
+ggplot(Intervaldf, aes(x = interval , y = steps)) + geom_line(color="blue", size=1) + labs(title = "Avg. Daily Steps", x = "Interval", y = "Avg. Steps per day")
+```
+
+### 5. The 5-minute interval that, on average, contains the maximum number of steps
+```{r, echo=TRUE}
+Intervaldf %>%
+  filter(steps == max(steps)) %>%
+  select(interval) %>%
+  summarize(max_interval = interval)
+
+```
+
+
+### 6. Code to describe and show a strategy for imputing missing data
+#### Using the mean value to fill NA
+```{r, echo=TRUE}
+sapply(activitydf,function(x) sum(is.na(x)))
+
+newactivitydf = activitydf %>%
+  mutate(steps = replace_na(steps,mean(steps,na.rm=T)))
+
+sapply(newactivitydf,function(x) sum(is.na(x)))
+
+# Create a new dataset that is equal to the original dataset but with the missing data filled in.
+# write.csv(newactivitydf,file='tidyData_activity.csv')
+```
+
+### 7. Histogram of the total number of steps taken each day after missing values are imputed
+```{r, echo=TRUE}
+Total_Steps = newactivitydf %>%
+  select(date, steps) %>%
+  group_by(date) %>%
+  summarize(steps = sum(steps))
+
+ggplot(Total_Steps, aes(x = steps)) +
+  geom_histogram(fill = "blue", binwidth = 900) +
+  labs(title = "Daily Steps", x = "Steps", y = "Frequency")
+
+Total_Steps %>%
+  select(steps) %>%
+  summarise(Mean_Steps = mean(steps,na.rm=T),
+            Media_Steps = median(steps, na.rm=T))
+```
+
+### 8.Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+```{r, echo=TRUE}
+activitydf <- read.csv("activity.csv")
+activitydf = activitydf %>%
+  mutate(steps = replace_na(steps,mean(steps,na.rm=T)),
+         date = as.Date(date),
+         `Day of week` = weekdays(date),
+         `weekday or weekend` = ifelse(grepl(pattern = "Monday|Tuesday|Wednesday|Thursday|Friday",`Day of week`),"weekday", "weekend"),
+         `weekday or weekend` = as.factor(`weekday or weekend`)) %>%
+  select(everything()) %>%
+  group_by(interval, `weekday or weekend`) %>%
+  summarise(steps = mean(steps))
+
+ggplot(activitydf , aes(x = interval , y = steps, color=`weekday or weekend`)) + geom_line() + labs(title = "Avg. Daily Steps by Weektype", x = "Interval", y = "No. of Steps") + facet_wrap(~`weekday or weekend` , ncol = 1, nrow=2)
+
+```
+
